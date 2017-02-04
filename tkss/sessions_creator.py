@@ -1,5 +1,7 @@
 import random
 import os
+import pandas
+
 import const
 
 __author__ = 'Odedz'
@@ -47,7 +49,6 @@ class QueryDistanceMatrix(object):
                 self._gen_distance(first_query, second_query)
 
     def pretty_print(self):
-        import pandas
         print pandas.DataFrame(self._matrix)
 
     def _gen_distance(self, first_query, second_query):
@@ -96,11 +97,11 @@ def similarity(result, query_similarity_matrix, s1, s2, size_s1=None, size_s2=No
     # Current step calculations
     result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2)),
                                      result[len(s1)-1, len(s2)] - const.DELTA,
-                                     result[len(s1), len(s2)-1] - const.DELTA)
+                                     result[len(s1), len(s2)-1] - const.DELTA,
+                                     0)
 
 
 def pretty_print_result(result):
-    import pandas
     result_dict = {}
     for i, j in result.iterkeys():
         if i not in result_dict:
@@ -110,9 +111,8 @@ def pretty_print_result(result):
 
 
 if __name__ == '__main__':
-    matrix = QueryDistanceMatrix(2)
+    matrix = QueryDistanceMatrix(5)
     matrix.eager_evaluation()
-    matrix.pretty_print()
 
     sessions = [[], []]
     for i in range(len(matrix)):
@@ -120,11 +120,15 @@ if __name__ == '__main__':
     print 'S1: ', sessions[0]
     print 'S2: ', sessions[1]
 
-    print 'Started'
+    print
+    print 'Query Distance Matrix:'
+    matrix.pretty_print()
 
+    print 'Started'
 
     result = {}
     similarity(result, matrix, sessions[0], sessions[1], len(sessions[0]), len(sessions[1]))
 
     print
+    print 'Result:'
     pretty_print_result(result)
