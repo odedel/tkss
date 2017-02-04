@@ -1,6 +1,7 @@
 import random
 import os
 import pandas
+import datetime
 
 import const
 
@@ -74,29 +75,32 @@ class QueryDistanceMatrix(object):
             return candidate_distance
 
 
-def similarity(result, query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
+def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None, result=None):
     if not size_s1:
         size_s1 = len(s1)
     if not size_s2:
         size_s2 = len(s2)
+    if not result:
+        result = {}
 
     if not s1 or not s2:
         result[len(s1), len(s2)] = 0
-        return
+        return result
 
     if (len(s1), len(s2)) in result:
-        return
+        return result
 
     # Recursive calls
-    similarity(result, query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2)
-    similarity(result, query_similarity_matrix, s1[:-1], s2, size_s1, size_s2)
-    similarity(result, query_similarity_matrix, s1, s2[:-1], size_s1, size_s2)
+    result = similarity(query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2, result)
+    result = similarity(query_similarity_matrix, s1[:-1], s2, size_s1, size_s2, result)
+    result = similarity(query_similarity_matrix, s1, s2[:-1], size_s1, size_s2, result)
 
     # Current step calculations
     result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2)),
                                      result[len(s1)-1, len(s2)] - const.DELTA,
                                      result[len(s1), len(s2)-1] - const.DELTA,
                                      0)
+    return result
 
 
 def pretty_print_result(result):
@@ -109,10 +113,9 @@ def pretty_print_result(result):
 
 
 if __name__ == '__main__':
-
     top_k = []
 
-    matrix = QueryDistanceMatrix(100)
+    matrix = QueryDistanceMatrix(500)
     matrix.eager_evaluation()
 
     sessions = [[] for i in range(const.NUMBER_OF_SESSIONS)]
@@ -125,16 +128,16 @@ if __name__ == '__main__':
     s_cur = sessions[0]
 
     print 'Started'
+    start = datetime.datetime.now()
 
     for index, session in enumerate(sessions):
-        result = {}
-        similarity(result, matrix, s_cur, session, len(s_cur), len(session))
-
-        result = result[len(s_cur), len(session)]
+        similarity_score = similarity(matrix, s_cur, session, len(s_cur), len(session))[len(s_cur), len(session)]
         if len(top_k) < const.K:
-            top_k.append((index, result))
-        elif result > top_k[-1][1]:
-            top_k = top_k[:-1] + [(index, result)]
+            top_k.append((index, similarity_score))
+        elif similarity_score > top_k[-1][1]:
+            top_k = top_k[:-1] + [(index, similarity_score)]
             top_k.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
+
+    print datetime.datetime.now() - start
 
     print top_k
