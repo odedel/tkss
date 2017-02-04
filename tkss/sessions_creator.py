@@ -133,7 +133,7 @@ def find_top_similar_queries(query_distance_matrix, query, sessions, size):
         for query_index, other_query in enumerate(session):
             if len(result) < size:
                 result.append((session_index, query_index, query_distance_matrix[(query, other_query)]))
-            elif query_distance_matrix[(query, other_query)] > result[-1][2]:
+            elif query_distance_matrix[(query, other_query)] < result[-1][2]:
                 result = result[:-1] + [(session_index, query_index, query_distance_matrix[(query, other_query)])]
         result.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
     return result
