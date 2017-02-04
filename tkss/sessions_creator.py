@@ -51,6 +51,9 @@ class QueryDistanceMatrix(object):
         print pandas.DataFrame(self._matrix)
 
     def _gen_distance(self, first_query, second_query):
+        if first_query == second_query:
+            return 0
+
         while True:
             candidate_distance = random.random()
 
@@ -119,4 +122,9 @@ if __name__ == '__main__':
 
     print 'Started'
 
-    print similarity(matrix, sessions[0], sessions[1], len(sessions[0]), len(sessions[1]))
+
+    result = {}
+    similarity(result, matrix, sessions[0], sessions[1], len(sessions[0]), len(sessions[1]))
+
+    print
+    pretty_print_result(result)
