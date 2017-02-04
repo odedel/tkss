@@ -13,7 +13,7 @@ class QueryDistanceMatrix(object):
         self._size = size
         self._matrix = {}
         for r in xrange(self._size):
-            self._matrix[r] = {r: 1}
+            self._matrix[r] = {r: 0}
 
     def __repr__(self):
         return self._matrix
@@ -75,7 +75,7 @@ class QueryDistanceMatrix(object):
             return candidate_distance
 
 
-def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None, result=None):
+def similarity(query_distance_matrix, s1, s2, size_s1=None, size_s2=None, result=None):
     if not size_s1:
         size_s1 = len(s1)
     if not size_s2:
@@ -91,12 +91,12 @@ def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None, resu
         return result
 
     # Recursive calls
-    result = similarity(query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2, result)
-    result = similarity(query_similarity_matrix, s1[:-1], s2, size_s1, size_s2, result)
-    result = similarity(query_similarity_matrix, s1, s2[:-1], size_s1, size_s2, result)
+    result = similarity(query_distance_matrix, s1[:-1], s2[:-1], size_s1, size_s2, result)
+    result = similarity(query_distance_matrix, s1[:-1], s2, size_s1, size_s2, result)
+    result = similarity(query_distance_matrix, s1, s2[:-1], size_s1, size_s2, result)
 
     # Current step calculations
-    result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2)),
+    result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + (1-query_distance_matrix[s1[-1], s2[-1]]) * const.decay(size_s1-len(s1), size_s2-len(s2)),
                                      result[len(s1)-1, len(s2)] - const.DELTA,
                                      result[len(s1), len(s2)-1] - const.DELTA,
                                      0)
