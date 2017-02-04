@@ -36,6 +36,9 @@ class QueryDistanceMatrix(object):
             s += str(query_result) + os.linesep
         return s[:-1]
 
+    def __len__(self):
+        return self._size
+
     def __getitem__(self, cor):
         first_query, second_query = cor
 
@@ -72,6 +75,8 @@ class QueryDistanceMatrix(object):
 
 if __name__ == '__main__':
     matrix = QueryDistanceMatrix(5)
+
+    print len(matrix)
 
     print pandas.DataFrame(matrix.dict_)
 
