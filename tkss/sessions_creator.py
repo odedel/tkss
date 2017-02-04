@@ -126,6 +126,7 @@ def top_k_computation(s_cur, sessions):
 
     return top_k
 
+
 if __name__ == '__main__':
     matrix = QueryDistanceMatrix(500)
     matrix.eager_evaluation()
