@@ -109,14 +109,13 @@ def pretty_print_result(result):
 
 
 if __name__ == '__main__':
-    NUMBER_OF_SESSIONS = 10
-    K = 3
+
     top_k = []
 
     matrix = QueryDistanceMatrix(100)
     matrix.eager_evaluation()
 
-    sessions = [[] for i in range(NUMBER_OF_SESSIONS)]
+    sessions = [[] for i in range(const.NUMBER_OF_SESSIONS)]
 
     for i in range(len(matrix)):
         sessions[random.randint(0, len(sessions)-1)].append(i)
@@ -132,7 +131,7 @@ if __name__ == '__main__':
         similarity(result, matrix, s_cur, session, len(s_cur), len(session))
 
         result = result[len(s_cur), len(session)]
-        if len(top_k) < K:
+        if len(top_k) < const.K:
             top_k.append((index, result))
         elif result > top_k[-1][1]:
             top_k = top_k[:-1] + [(index, result)]
