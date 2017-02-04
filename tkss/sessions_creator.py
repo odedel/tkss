@@ -127,6 +127,21 @@ def top_k_computation(s_cur, sessions):
     return top_k
 
 
+def find_top_similar_queries(query, sessions, size):
+    pass
+
+
+def top_k_iterative_computation(s_cur, sessions):
+    top_sessions = []
+    flag = False
+    lowest_score_top_sessions = 0
+    for query in s_cur:
+        if not flag:
+            flag = True
+            top_sessions = find_top_similar_queries(query, sessions, const.K + const.P)
+            lowest_score_top_sessions = None
+
+
 if __name__ == '__main__':
     matrix = QueryDistanceMatrix(500)
     matrix.eager_evaluation()
@@ -143,5 +158,5 @@ if __name__ == '__main__':
 
     print 'Started'
     start_time = datetime.datetime.now()
-    print top_k_computation(s_cur, sessions)
+    print top_k_iterative_computation(s_cur, sessions)
     print datetime.datetime.now() - start_time
