@@ -134,10 +134,13 @@ if __name__ == '__main__':
 
     for i in range(len(matrix)):
         sessions[random.randint(0, len(sessions)-1)].append(i)
+    s_cur = sessions[0]
+    print 'Session s_cur', len(s_cur), s_cur
+    sessions = sessions[1:]
     for index, session in enumerate(sessions):
-        print 'Session ', index, ': ', session
+        print 'Session ', index, len(session), ':', session
 
     print 'Started'
-    start = datetime.datetime.now()
-    print top_k_computation(sessions[0], sessions[1:])
-    print datetime.datetime.now() - start
+    start_time = datetime.datetime.now()
+    print top_k_computation(s_cur, sessions)
+    print datetime.datetime.now() - start_time
