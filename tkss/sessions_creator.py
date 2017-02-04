@@ -71,44 +71,45 @@ class QueryDistanceMatrix(object):
 
             return candidate_distance
 
-similarity_result = {}
 
-def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
+def similarity(result, query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
     if not size_s1:
         size_s1 = len(s1)
     if not size_s2:
         size_s2 = len(s2)
 
     if not s1 or not s2:
-        return 0, []
+        result[len(s1), len(s2)] = 0
+        return
 
-    if (len(s1), len(s2)) in similarity_result:
-        return similarity_result[(len(s1), len(s2))]
+    if (len(s1), len(s2)) in result:
+        return
 
-    match, result_match = similarity(query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2)
-    skip_s1, result_skip_s1 = similarity(query_similarity_matrix, s1[:-1], s2, size_s1, size_s2)
-    skip_s2, result_skip_s2 = similarity(query_similarity_matrix, s1, s2[:-1], size_s1, size_s2)
+    # Recursive calls
+    similarity(result, query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2)
+    similarity(result, query_similarity_matrix, s1[:-1], s2, size_s1, size_s2)
+    similarity(result, query_similarity_matrix, s1, s2[:-1], size_s1, size_s2)
 
-    match += query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2))
-    skip_s1 -= const.DELTA
-    skip_s2 -= const.DELTA
+    # Current step calculations
+    result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2)),
+                                     result[len(s1)-1, len(s2)] - const.DELTA,
+                                     result[len(s1), len(s2)-1] - const.DELTA)
 
-    max_ = max(match, skip_s1, skip_s2, 0)
-    if match == max_:
-        similarity_result[(len(s1), len(s2))] = match, result_match + [(s1[-1], s2[-1])]
-    elif skip_s1 == max_:
-        similarity_result[(len(s1), len(s2))] = skip_s1, result_skip_s1
-    elif skip_s2 == max_:
-        similarity_result[(len(s1), len(s2))] = skip_s2, result_skip_s2
-    else:
-        similarity_result[(len(s1), len(s2))] = 0, []
 
-    return similarity_result[(len(s1), len(s2))]
+def pretty_print_result(result):
+    import pandas
+    result_dict = {}
+    for i, j in result.iterkeys():
+        if i not in result_dict:
+            result_dict[i] = {}
+        result_dict[i][j] = result[(i, j)]
+    print pandas.DataFrame(result_dict)
 
 
 if __name__ == '__main__':
-    matrix = QueryDistanceMatrix(100)
+    matrix = QueryDistanceMatrix(2)
     matrix.eager_evaluation()
+    matrix.pretty_print()
 
     sessions = [[], []]
     for i in range(len(matrix)):
