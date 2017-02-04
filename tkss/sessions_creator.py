@@ -132,9 +132,9 @@ def find_top_similar_queries(query_distance_matrix, query, sessions, size):
     for session_index, session in enumerate(sessions):
         for query_index, other_query in enumerate(session):
             if len(result) < size:
-                result.append((session_index, query_index, query_distance_matrix[(query, other_query)]))
-            elif query_distance_matrix[(query, other_query)] < result[-1][2]:
-                result = result[:-1] + [(session_index, query_index, query_distance_matrix[(query, other_query)])]
+                result += [(session_index, query_index, 1 - query_distance_matrix[(query, other_query)])]
+            elif query_distance_matrix[(query, other_query)] < 1 - result[-1][2]:
+                result = result[:-1] + [(session_index, query_index, 1 - query_distance_matrix[(query, other_query)])]
         result.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
     return result
 
@@ -148,6 +148,7 @@ def top_k_iterative_computation(query_distance_matrix, s_cur, sessions):
             flag = True
             top_sessions = find_top_similar_queries(query_distance_matrix, query, sessions, const.K + const.P)
             lowest_score_top_sessions = top_sessions[-1][2]
+
     return top_sessions[:const.K]
 
 
