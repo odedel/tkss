@@ -12,7 +12,7 @@ class QueryDistanceMatrix(object):
         self._size = size
         self._matrix = {}
         for r in xrange(self._size):
-            self._matrix[r] = {r: 0}
+            self._matrix[r] = {r: 1}
 
     def __repr__(self):
         return self._matrix
@@ -46,15 +46,13 @@ class QueryDistanceMatrix(object):
     def eager_evaluation(self):
         for first_query in self._matrix.iterkeys():
             for second_query in self._matrix.iterkeys():
-                self._gen_distance(first_query, second_query)
+                if first_query not in self._matrix or second_query not in self._matrix[second_query]:
+                    self._gen_distance(first_query, second_query)
 
     def pretty_print(self):
         print pandas.DataFrame(self._matrix)
 
     def _gen_distance(self, first_query, second_query):
-        if first_query == second_query:
-            return 0
-
         while True:
             candidate_distance = random.random()
 
@@ -111,25 +109,33 @@ def pretty_print_result(result):
 
 
 if __name__ == '__main__':
+    NUMBER_OF_SESSIONS = 10
+    K = 3
+    top_k = []
+
     matrix = QueryDistanceMatrix(100)
     matrix.eager_evaluation()
 
-    sessions = [[] for i in range(10)]
+    sessions = [[] for i in range(NUMBER_OF_SESSIONS)]
 
     for i in range(len(matrix)):
         sessions[random.randint(0, len(sessions)-1)].append(i)
     for index, session in enumerate(sessions):
         print 'Session ', index, ': ', session
 
-    print
-    print 'Query Distance Matrix:'
-    matrix.pretty_print()
+    s_cur = sessions[0]
 
     print 'Started'
 
-    result = {}
-    similarity(result, matrix, sessions[0], sessions[1], len(sessions[0]), len(sessions[1]))
+    for index, session in enumerate(sessions):
+        result = {}
+        similarity(result, matrix, s_cur, session, len(s_cur), len(session))
 
-    print
-    print 'Result:'
-    pretty_print_result(result)
+        result = result[len(s_cur), len(session)]
+        if len(top_k) < K:
+            top_k.append((index, result))
+        elif result > top_k[-1][1]:
+            top_k = top_k[:-1] + [(index, result)]
+            top_k.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
+
+    print top_k
