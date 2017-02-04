@@ -11,7 +11,7 @@ class QueryDistanceMatrix(object):
     def __init__(self, size):
         self._size = size
         self._matrix = {}
-        for r in xrange(size):
+        for r in xrange(self._size):
             self._matrix[r] = {r: 0}
 
     def __repr__(self):
@@ -111,14 +111,15 @@ def pretty_print_result(result):
 
 
 if __name__ == '__main__':
-    matrix = QueryDistanceMatrix(5)
+    matrix = QueryDistanceMatrix(100)
     matrix.eager_evaluation()
 
-    sessions = [[], []]
+    sessions = [[] for i in range(10)]
+
     for i in range(len(matrix)):
-        sessions[random.randint(0, 1)].append(i)
-    print 'S1: ', sessions[0]
-    print 'S2: ', sessions[1]
+        sessions[random.randint(0, len(sessions)-1)].append(i)
+    for index, session in enumerate(sessions):
+        print 'Session ', index, ': ', session
 
     print
     print 'Query Distance Matrix:'
