@@ -127,19 +127,28 @@ def top_k_computation(s_cur, sessions):
     return top_k
 
 
-def find_top_similar_queries(query, sessions, size):
-    pass
+def find_top_similar_queries(query_distance_matrix, query, sessions, size):
+    result = []
+    for session_index, session in enumerate(sessions):
+        for query_index, other_query in enumerate(session):
+            if len(result) < size:
+                result.append((session_index, query_index, query_distance_matrix[(query, other_query)]))
+            elif query_distance_matrix[(query, other_query)] > result[-1][2]:
+                result = result[:-1] + [(session_index, query_index, query_distance_matrix[(query, other_query)])]
+        result.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
+    return result
 
 
-def top_k_iterative_computation(s_cur, sessions):
+def top_k_iterative_computation(query_distance_matrix, s_cur, sessions):
     top_sessions = []
     flag = False
     lowest_score_top_sessions = 0
     for query in s_cur:
         if not flag:
             flag = True
-            top_sessions = find_top_similar_queries(query, sessions, const.K + const.P)
-            lowest_score_top_sessions = None
+            top_sessions = find_top_similar_queries(query_distance_matrix, query, sessions, const.K + const.P)
+            lowest_score_top_sessions = top_sessions[-1][2]
+    return top_sessions[:const.K]
 
 
 if __name__ == '__main__':
@@ -158,5 +167,5 @@ if __name__ == '__main__':
 
     print 'Started'
     start_time = datetime.datetime.now()
-    print top_k_iterative_computation(s_cur, sessions)
+    print top_k_iterative_computation(matrix, s_cur, sessions)
     print datetime.datetime.now() - start_time
