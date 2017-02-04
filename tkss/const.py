@@ -2,7 +2,7 @@ __author__ = 'Odedz'
 
 DELTA = 0.2
 BETA = 0.95
-NUMBER_OF_SESSIONS = 10
+NUMBER_OF_SESSIONS = 2
 K = 3
 P = 2
 

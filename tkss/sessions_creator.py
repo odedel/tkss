@@ -47,7 +47,7 @@ class QueryDistanceMatrix(object):
     def eager_evaluation(self):
         for first_query in self._matrix.iterkeys():
             for second_query in self._matrix.iterkeys():
-                if first_query not in self._matrix or second_query not in self._matrix[second_query]:
+                if first_query not in self._matrix or second_query not in self._matrix[first_query]:
                     self._gen_distance(first_query, second_query)
 
     def pretty_print(self):
@@ -75,8 +75,8 @@ class QueryDistanceMatrix(object):
             return candidate_distance
 
 current_iteration = 0
-query_distance_matrix = QueryDistanceMatrix(500)
-
+query_distance_matrix = QueryDistanceMatrix(5)
+s_cur = []
 
 def pretty_print_result(result):
     result_dict = {}
@@ -87,34 +87,34 @@ def pretty_print_result(result):
     print pandas.DataFrame(result_dict)
 
 
-def similarity(s1, s2, previous_calculations=None):
-    if not previous_calculations:
-        result = {}
-        for i in range(s1):
-            result[i, 0] = 0
-        for i in range(s2):
-            result[0, i] = 0
-    else:
-        iteration, result = previous_calculations
-        result = map(lambda x: x * const.decay(current_iteration - iteration, 0), result)
-    _similarity(s1, s2, len(s1), len(s2), result)
-    return result
-
-
 def _similarity(s1, s2, size_s1, size_s2, result):
-    if [len(s1), len(s2)] in result:
+    if (len(s1), len(s2)) in result:
         return
 
     # Update result with recursive calls
-    similarity(s1[:-1], s2[:-1], size_s1, size_s2, result)
-    similarity(s1[:-1], s2, size_s1, size_s2, result)
-    similarity(s1, s2[:-1], size_s1, size_s2, result)
+    _similarity(s1[:-1], s2[:-1], size_s1, size_s2, result)
+    _similarity(s1[:-1], s2, size_s1, size_s2, result)
+    _similarity(s1, s2[:-1], size_s1, size_s2, result)
 
     # Current step calculations
     result[(len(s1), len(s2))] = max(result[(len(s1)-1, len(s2)-1)] + (1-query_distance_matrix[s1[-1], s2[-1]]) * const.decay(size_s1-len(s1), size_s2-len(s2)),
                                      result[len(s1)-1, len(s2)] - const.DELTA,
                                      result[len(s1), len(s2)-1] - const.DELTA,
                                      0)
+
+
+def similarity(s1, s2, previous_calculations=None):
+    if not previous_calculations:
+        result = {}
+        for i in range(len(s1)+1):
+            result[i, 0] = 0
+        for i in range(len(s2)+1):
+            result[0, i] = 0
+    else:
+        iteration, result = previous_calculations
+        result = map(lambda x: x * const.decay(current_iteration - iteration, 0), result)
+    _similarity(s1, s2, len(s1), len(s2), result)
+    return result
 
 
 class Entry(object):
@@ -126,12 +126,22 @@ class Entry(object):
 
     @property
     def score(self):
-        global current_iteration, matrix
-
-        tmp_result = map(lambda x: x * const.decay(current_iteration - self._iteration, 0), self._score_matrix)
-        self._score_matrix = (matrix, s_cur, session, result=tmp_result)
+        self._score_matrix = similarity(s_cur, self._session[:self._query_index+1], (self._iteration, self._score_matrix))
         self._iteration = current_iteration
-        return self._score_matrix[len]
+        return self._score_matrix[current_iteration, self._query_index]
+
+    @property
+    def upper_bound(self):
+        counter = 0
+        for i in range(self._iteration+1, current_iteration):
+            counter += 1 * const.decay(current_iteration-i, 0)
+        return self._score_matrix[self._iteration, self._query_index] * const.decay(current_iteration - self._iteration, 0) \
+               + counter
+
+    @property
+    def lower_bound(self):
+        return self._score_matrix[self._iteration, self._query_index] * const.decay(current_iteration - self._iteration, 0) \
+               - (current_iteration - self._iteration) * const.DELTA
 
 
 class SimilarityList(object):
@@ -139,23 +149,50 @@ class SimilarityList(object):
         self._max_length = max_length
         self._l = []
 
-    def insert(self, e, current_iteration, s_cur):
+    def insert(self, e):
         if len(self._l) < self._max_length:
-            self._l.append(e)
+            self._l = self._l + [e]
         else:
+            self._l.sort(cmp=lambda x, y: -1 if x.lower_bound > y.upper_bound else 1 if x.upper_bound < y.lower_bound else 0)
+            last_item = self._l[-1]
+            for session in filter(lambda x: x.upper_bound >= last_item.lower_bound and x.lower_bound <= last_item.upper_bound):
+                session.score
+            self._l.sort(cmp=lambda x, y: -1 if x.lower_bound > y.upper_bound else 1 if x.upper_bound < y.lower_bound else 0)
+
+            if e.score > self._l[-1].upper_bound:
+                self._l = self._l[:-1] + [e]
+            elif e.score > self._l[-1].lower_bound:
+                if e.score > self._l[-1].score:
+                    self._l = self._l[:-1] + [e]
 
 
+if __name__ == '__main__':
+    query_distance_matrix.eager_evaluation()
 
-def compute_similarity(s_cur, sessions, iteration=None):
-    similarity_result = []
-    for session_number, session in enumerate(sessions):
-        subsession = []
-        for query in session:
-            subsession += [query]
-            similarity_score = similarity(matrix, s_cur, subsession, len(s_cur), len(subsession))[len(s_cur), len(subsession)]
-            similarity_result = similarity_result[:-1] + [SimilarityEntry(session_number, len(subsession), similarity_score, iteration)]
-            similarity_result.sort(cmp=lambda e1, e2: -1 if e1.score > e2.score else 1 if e1.score < e2.score else 0)    # TODO : use ordered list
-    return similarity_result
+    sessions = [[] for i in range(const.NUMBER_OF_SESSIONS)]
+
+    for i in range(len(query_distance_matrix)):
+        sessions[random.randint(0, len(sessions)-1)].append(i)
+    s_cur = sessions[0]
+    print 'Session s_cur', len(s_cur), s_cur
+    sessions = sessions[1:]
+    for index, session in enumerate(sessions):
+        print 'Session ', index, len(session), ':', session
+
+    query_distance_matrix.pretty_print()
+    pretty_print_result(similarity(s_cur, sessions[0]))
+
+
+# def compute_similarity(s_cur, sessions, iteration=None):
+#     similarity_result = []
+#     for session_number, session in enumerate(sessions):
+#         subsession = []
+#         for query in session:
+#             subsession += [query]
+#             similarity_score = similarity(matrix, s_cur, subsession, len(s_cur), len(subsession))[len(s_cur), len(subsession)]
+#             similarity_result = similarity_result[:-1] + [SimilarityEntry(session_number, len(subsession), similarity_score, iteration)]
+#             similarity_result.sort(cmp=lambda e1, e2: -1 if e1.score > e2.score else 1 if e1.score < e2.score else 0)    # TODO : use ordered list
+#     return similarity_result
 
 
 # def update_top_sessions_score(iteration, s_cur, top_sessions):
@@ -175,44 +212,44 @@ def compute_similarity(s_cur, sessions, iteration=None):
 #     return tmp_result
 
 
-def top_k_iterative_computation(s_cur, sessions):
-    global current_iteration
+# def top_k_iterative_computation(s_cur, sessions):
+#     global current_iteration
+#
+#     top_sessions = []
+#     last_scan_score = 0
+#     last_scan_iteration = -1
+#     for current_iteration, query in enumerate(s_cur):
+#         if last_scan_iteration == -1:
+#             top_sessions = compute_similarity([query], sessions, current_iteration+1)[:const.K + const.P]
+#             last_scan_score = top_sessions[-1].score
+#             last_scan_iteration = current_iteration
+#         else:
+#             update_top_sessions_score(current_iteration, s_cur[:current_iteration], top_sessions)
+#             k_score = top_sessions[const.K-1].score
+#             if last_scan_score >= k_score:
+#                 compute_similarity(s_cur[:current_iteration], sessions, current_iteration+1)[:const.K + const.P] # TODO: replace with conditional computation
+#                 last_scan_score = top_sessions[-1].score
+#                 last_scan_iteration = current_iteration
+#             else:
+#                 last_scan_score = 1 + last_scan_score * (const.BETA ** 2)
+#
+#     return top_sessions[:const.K]
 
-    top_sessions = []
-    last_scan_score = 0
-    last_scan_iteration = -1
-    for current_iteration, query in enumerate(s_cur):
-        if last_scan_iteration == -1:
-            top_sessions = compute_similarity([query], sessions, current_iteration+1)[:const.K + const.P]
-            last_scan_score = top_sessions[-1].score
-            last_scan_iteration = current_iteration
-        else:
-            update_top_sessions_score(current_iteration, s_cur[:current_iteration], top_sessions)
-            k_score = top_sessions[const.K-1].score
-            if last_scan_score >= k_score:
-                compute_similarity(s_cur[:current_iteration], sessions, current_iteration+1)[:const.K + const.P] # TODO: replace with conditional computation
-                last_scan_score = top_sessions[-1].score
-                last_scan_iteration = current_iteration
-            else:
-                last_scan_score = 1 + last_scan_score * (const.BETA ** 2)
 
-    return top_sessions[:const.K]
-
-
-if __name__ == '__main__':
-    matrix.eager_evaluation()
-
-    sessions = [[] for i in range(const.NUMBER_OF_SESSIONS)]
-
-    for i in range(len(matrix)):
-        sessions[random.randint(0, len(sessions)-1)].append(i)
-    s_cur = sessions[0]
-    print 'Session s_cur', len(s_cur), s_cur
-    sessions = sessions[1:]
-    for index, session in enumerate(sessions):
-        print 'Session ', index, len(session), ':', session
-
-    print 'Started'
-    start_time = datetime.datetime.now()
-    print top_k_iterative_computation(s_cur, sessions)
-    print datetime.datetime.now() - start_time
+# if __name__ == '__main__':
+#     matrix.eager_evaluation()
+#
+#     sessions = [[] for i in range(const.NUMBER_OF_SESSIONS)]
+#
+#     for i in range(len(matrix)):
+#         sessions[random.randint(0, len(sessions)-1)].append(i)
+#     s_cur = sessions[0]
+#     print 'Session s_cur', len(s_cur), s_cur
+#     sessions = sessions[1:]
+#     for index, session in enumerate(sessions):
+#         print 'Session ', index, len(session), ':', session
+#
+#     print 'Started'
+#     start_time = datetime.datetime.now()
+#     print top_k_iterative_computation(s_cur, sessions)
+#     print datetime.datetime.now() - start_time
