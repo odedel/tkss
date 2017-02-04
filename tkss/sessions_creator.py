@@ -1,17 +1,8 @@
 import random
-import pandas
 import os
+import const
 
 __author__ = 'Odedz'
-
-class Session(object):
-
-    def __init__(self, size=None):
-        if not size:
-            size = random.randint(1, 150)
-
-        self._size = size
-
 
 class QueryDistanceMatrix(object):
 
@@ -48,6 +39,18 @@ class QueryDistanceMatrix(object):
         if first_query in self._matrix and second_query in self._matrix[first_query]:
             return self._matrix[first_query][second_query]
 
+        return self._gen_distance(first_query, second_query)
+
+    def eager_evaluation(self):
+        for first_query in self._matrix.iterkeys():
+            for second_query in self._matrix.iterkeys():
+                self._gen_distance(first_query, second_query)
+
+    def pretty_print(self):
+        import pandas
+        print pandas.DataFrame(self._matrix)
+
+    def _gen_distance(self, first_query, second_query):
         while True:
             candidate_distance = random.random()
 
@@ -68,20 +71,45 @@ class QueryDistanceMatrix(object):
 
             return candidate_distance
 
-    @property
-    def dict_(self):
-        return self._matrix
+
+def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
+    if not size_s1:
+        size_s1 = len(s1)
+    if not size_s2:
+        size_s2 = len(s2)
+
+    if not s1 or not s2:
+        return 0, []
+
+    match, result_match = similarity(query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2)
+    skip_s1, result_skip_s1 = similarity(query_similarity_matrix, s1[:-1], s2, size_s1, size_s2)
+    skip_s2, result_skip_s2 = similarity(query_similarity_matrix, s1, s2[:-1], size_s1, size_s2)
+
+    match += query_similarity_matrix[s1[-1], s2[-1]] * const.decay(size_s1-len(s1), size_s2-len(s2))
+    skip_s1 -= const.DELTA
+    skip_s2 -= const.DELTA
+
+    max_ = max(match, skip_s1, skip_s2, 0)
+    if match == max_:
+        return match, result_match + [(s1[-1], s2[-1])]
+    elif skip_s1 == max_:
+        return skip_s1, result_skip_s1
+    elif skip_s2 == max_:
+        return skip_s2, result_skip_s2
+    else:
+        return 0, []
 
 
 if __name__ == '__main__':
-    matrix = QueryDistanceMatrix(5)
+    matrix = QueryDistanceMatrix(20)
+    matrix.eager_evaluation()
 
-    print len(matrix)
+    sessions = [[], []]
+    for i in range(len(matrix)):
+        sessions[random.randint(0, 1)].append(i)
+    print 'S1: ', sessions[0]
+    print 'S2: ', sessions[1]
 
-    print pandas.DataFrame(matrix.dict_)
+    print 'Started'
 
-    for i in range(5):
-        for j in range(i+1):
-            print matrix[(i, j)]
-
-    print pandas.DataFrame(matrix.dict_)
+    print similarity(matrix, sessions[0], sessions[1], len(sessions[0]), len(sessions[1]))
