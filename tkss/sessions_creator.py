@@ -71,6 +71,7 @@ class QueryDistanceMatrix(object):
 
             return candidate_distance
 
+similarity_result = {}
 
 def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
     if not size_s1:
@@ -80,6 +81,9 @@ def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
 
     if not s1 or not s2:
         return 0, []
+
+    if (len(s1), len(s2)) in similarity_result:
+        return similarity_result[(len(s1), len(s2))]
 
     match, result_match = similarity(query_similarity_matrix, s1[:-1], s2[:-1], size_s1, size_s2)
     skip_s1, result_skip_s1 = similarity(query_similarity_matrix, s1[:-1], s2, size_s1, size_s2)
@@ -91,17 +95,19 @@ def similarity(query_similarity_matrix, s1, s2, size_s1=None, size_s2=None):
 
     max_ = max(match, skip_s1, skip_s2, 0)
     if match == max_:
-        return match, result_match + [(s1[-1], s2[-1])]
+        similarity_result[(len(s1), len(s2))] = match, result_match + [(s1[-1], s2[-1])]
     elif skip_s1 == max_:
-        return skip_s1, result_skip_s1
+        similarity_result[(len(s1), len(s2))] = skip_s1, result_skip_s1
     elif skip_s2 == max_:
-        return skip_s2, result_skip_s2
+        similarity_result[(len(s1), len(s2))] = skip_s2, result_skip_s2
     else:
-        return 0, []
+        similarity_result[(len(s1), len(s2))] = 0, []
+
+    return similarity_result[(len(s1), len(s2))]
 
 
 if __name__ == '__main__':
-    matrix = QueryDistanceMatrix(20)
+    matrix = QueryDistanceMatrix(100)
     matrix.eager_evaluation()
 
     sessions = [[], []]
