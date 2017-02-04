@@ -115,13 +115,14 @@ def pretty_print_result(result):
 def top_k_computation(s_cur, sessions):
     top_k = []
 
-    for index, session in enumerate(sessions):
-        similarity_score = similarity(matrix, s_cur, session, len(s_cur), len(session))[len(s_cur), len(session)]
-        if len(top_k) < const.K:
-            top_k.append((index, similarity_score))
-        elif similarity_score > top_k[-1][1]:
-            top_k = top_k[:-1] + [(index, similarity_score)]
-            top_k.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
+    for session_number, session in enumerate(sessions):
+        for last_query_index in range(len(session)):
+            similarity_score = similarity(matrix, s_cur, session[:last_query_index+1], len(s_cur), last_query_index + 1)[len(s_cur), last_query_index+1]
+            if len(top_k) < const.K:
+                top_k.append(((session_number, last_query_index), similarity_score))
+            elif similarity_score > top_k[-1][1]:
+                top_k = top_k[:-1] + [((session_number, last_query_index), similarity_score)]
+                top_k.sort(cmp=lambda x, y: -1 if x[1] > y[1] else 1 if x[1] < y[1] else 0)
 
     return top_k
 
@@ -138,6 +139,5 @@ if __name__ == '__main__':
 
     print 'Started'
     start = datetime.datetime.now()
-    print top_k_computation(sessions[0], sessions)
+    print top_k_computation(sessions[0], sessions[1:])
     print datetime.datetime.now() - start
-    
