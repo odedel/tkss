@@ -105,11 +105,7 @@ def _similarity(s1, s2, size_s1, size_s2, result):
 
 def similarity(s1, s2, previous_calculations=None):
     if not previous_calculations:
-        result = {}
-        for i in range(len(s1)+1):
-            result[i, 0] = 0
-        for i in range(len(s2)+1):
-            result[0, i] = 0
+        result = {indexes: 0 for indexes in [(i, 0) for i in range(len(s1)+1)] + [(0, i) for i in range(len(s2)+1)]}
     else:
         iteration, result = previous_calculations
         result = map(lambda x: x * const.decay(current_iteration - iteration, 0), result)
